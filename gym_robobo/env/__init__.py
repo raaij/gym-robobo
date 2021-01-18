@@ -3,6 +3,7 @@ import numpy as np
 import gym
 from gym import error, spaces
 from gym.utils import seeding
+from collections import OrderedDict
 
 import robobo
 
@@ -58,16 +59,46 @@ class RoboboEnv(gym.Env):
 
     def step(self, action):
         # Execute one time step within the environment
+        self._do_action(action)
+        obs = self.get_observation()
+        reward = self.get_reward(action, obs)
+        done = self.determine_if_done()
+        info = {}
+        return obs, reward, done, info
+
+    def get_observation(self):
+        position = self._get_position()
+        front_cam = self._get_front_cam()
+        sensor_readings = self._get_sensor_readings()
+        return OrderedDict(
+            front_cam=front_cam,
+            position=position,
+            sensor_readings=sensor_readings
+        )
+
+    def get_reward(self, action, obs):
+        # TODO: Implement reward function
+        return 1
+
+    def determine_if_done(self):
+        # TODO: Implement function to determine if we're in a terminal state
+        return False
+
+    def _do_action(self, action):
         self.rob.move(action['speed'][0], action['speed'][1])
         self.rob.set_phone_pan(action['camera']['pan'][0], 0.1)
         self.rob.set_phone_tilt(action['camera']['tilt'][0], 0.1)
 
-        # TODO: Implement observation, reward, done
-        obs = self.observation_space.sample()
-        reward =10
-        done = False
-        info = {}
-        return obs, reward, done, info
+    def _get_position(self):
+        return np.array(self.rob.position())
+
+    def _get_front_cam(self):
+        return self.rob.get_image_front()
+
+    def _get_sensor_readings(self):
+        sensor_readings = self.rob.read_irs()
+        sensor_readings = np.where(not sensor_readings, 0, sensor_readings)  # Replace False values with 0
+        return sensor_readings
 
     def reset(self):
         # Reset the state of the environment to an initial state
